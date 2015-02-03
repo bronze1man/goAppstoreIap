@@ -8,25 +8,23 @@ type iosIapVerifyReceiptRequest struct {
 	ReceiptData string `json:"receipt-data"`
 }
 type iosIapVerifyReceiptResponse struct {
-	Status  int                              `json:"status"`
-	Receipt iosIapVerifyReceiptResponseInner `json:"receipt"`
+	Status  int     `json:"status"`
+	Receipt Receipt `json:"receipt"`
 }
-type iosIapVerifyReceiptResponseInner struct {
-	InApp []iosIapReceiptTransaction `json:"in_app"`
+type Receipt struct {
+	InApp []ReceiptTransaction `json:"in_app"` // it may have two transaction.
 
-	//无价值信息
 	BundleId                   string `json:"bundle_id"`
 	AppVersion                 string `json:"application_version"`
 	OriginalApplicationVersion string `json:"original_application_version"`
 }
-type iosIapReceiptTransaction struct {
+type ReceiptTransaction struct {
 	ProductId     string `json:"product_id"`
 	TransactionId string `json:"transaction_id"`
 
-	//无价值信息
 	Quantity              string `json:"quantity"`
 	OriginalTransactionId string `json:"original_transaction_id"`
-	//无法读取时间 格式大概类似于:  2014-04-16 18:26:18 Etc/GMT
+	//暂时 无法读取时间 格式大概类似于:  2014-04-16 18:26:18 Etc/GMT
 	PurchaseDate               string `json:"purchase_date"`
 	OriginalPurchaseDate       string `json:"original_purchase_date"`
 	SubscriptionExpirationDate string `json:"expires_date"`
@@ -37,13 +35,11 @@ type iosIapReceiptTransaction struct {
 }
 
 type VerifyReceiptResponse struct {
-	ProductId     string
-	TransactionId string
-	Quantity      string
+	TransactionList []ReceiptTransaction //不一定只有一个交易
 }
 
 //订单正确性验证
-func VerifyReceipt(Receipt string) (response *VerifyReceiptResponse, err error) {
+func VerifyReceipt(Receipt string) (response *Receipt, err error) {
 	//问苹果验证Receipt的有效性
 	reqData := iosIapVerifyReceiptRequest{
 		ReceiptData: Receipt,
@@ -76,13 +72,5 @@ func VerifyReceipt(Receipt string) (response *VerifyReceiptResponse, err error) 
 	if JsonResp.Status != 0 {
 		return nil, fmt.Errorf("[appStorePayVerify] JsonResp.Status[%d]!=0", JsonResp.Status)
 	}
-	if len(JsonResp.Receipt.InApp) != 1 {
-		return nil, fmt.Errorf("[appStorePayVerify] len(JsonResp.Receipt.InApp)[%d]!=1", len(JsonResp.Receipt.InApp))
-	}
-	transaction := JsonResp.Receipt.InApp[0]
-	return &VerifyReceiptResponse{
-		ProductId:     transaction.ProductId,
-		TransactionId: transaction.TransactionId,
-		Quantity:      transaction.Quantity,
-	}, nil
+	return &JsonResp.Receipt, nil
 }
